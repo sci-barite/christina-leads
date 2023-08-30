@@ -187,13 +187,16 @@ function findContacts() {
     const terms = JSON.parse(props.getProperty('LeadsSearchTerms') ?? '[]');
     const sName = props.getProperty('FindContactsTargetSheet');
     if (!sName) throw new Error('No taget sheet set! Set it with "▶️🗃️ Start finding new contacts..." from the ➕ menu.');
-    const sheet = SpreadsheetApp.openById(getChristinaSheet()).getSheetByName(sName);
+    const ssDoc = SpreadsheetApp.openById(getChristinaSheet());
+    const sheet = ssDoc.getSheetByName(sName);
     if (!sheet) throw new Error('Target sheet "' + sName + '" not found! Set it correctly with "Start finding new contacts..." from the ➕ menu.');
     const found = JSON.parse(props.getProperty('SearchedOnApollo-' + sName.split(' ').join('')) ?? '[]');
     const comps = sheet.getRange('C2:C' + sheet.getLastRow()).getValues().flat().map((url, row) => [row, url]);
+    let forDone = true;
     //const leads = sheet.getRange('L2:L' + sheet.getLastRow()).getValues().flat().map((url, row) => [row, url]);
     for (const [row, comp] of comps) {
         if (found.includes(comp)) continue;
+        forDone = false;
         const logging = ['From row ' + (row + 1), '🗃️ Trying "' + comp + '"'];
         console.log(logging[1] + ' ' + logging[0]);
         SpreadsheetApp.getActiveSpreadsheet().toast(logging[0], logging[1]);
@@ -214,7 +217,8 @@ function findContacts() {
         console.warn(results[1], results[0]);
         break;
     }
-    props.setProperty('SearchedOnApollo-' + sName.split(' ').join(''), JSON.stringify(found));
+    if (forDone) ssDoc.insertSheet('⬅️⛔ No more contacts to be found!', sheet.getIndex()).setTabColor('red');
+    else props.setProperty('SearchedOnApollo-' + sName.split(' ').join(''), JSON.stringify(found));
 }
 
 function enrichContacts() {

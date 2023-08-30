@@ -6,7 +6,7 @@ function triggeredEnrich() {
     const contacts = document.getSheetByName(theSheet);
     if (!contacts) throw new Error('⛔ No sheet found with recorded name! Set it with "▶️📡 Start enriching contacts..." from the ➕ menu.');
     contacts.setTabColor('red');
-    const previous = propServ.getProperty('triggeredEnrich-previous');
+    const previous = propServ.getProperty('triggeredEnrich-previous-' + theSheet);
     const rangeObj = {top: previous ? Number(previous) : 0, end: 0};
     document.toast(JSON.stringify(rangeObj));
     const emailCol = contacts.getRange('M2:M' + contacts.getLastRow()).getValues().flat();
@@ -14,7 +14,7 @@ function triggeredEnrich() {
         rangeObj.top = emailCol.findIndex((element, row) => row > rangeObj.top && !element.includes('@'));
         rangeObj.end = emailCol.findIndex((element, row) => row > rangeObj.top && element.includes('@')) - 1;
     }
-    propServ.setProperty('triggeredEnrich-previous', (rangeObj.top).toString());
+    propServ.setProperty('triggeredEnrich-previous-' + theSheet, (rangeObj.top).toString());
     rangeObj.top += 2, rangeObj.end += 2;
     console.log('Found rows to enrich:', rangeObj);
     try {
