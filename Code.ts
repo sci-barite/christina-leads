@@ -249,7 +249,8 @@ function callEnricher(A1range: string, spread: GoogleAppsScript.Spreadsheet.Spre
             + '&lastNames=' + outgo.map(cont => cont[1]).join('__')
             + '&apolloIDs=' + outgo.map(cont => cont[5]).join('__')
             + '&topOfRange=' + A1row[0]
-            + '&endOfRange=' + (A1row[1] || A1row[0])
+            + '&endOfRange=' + (A1row[1] || A1row[0]
+            + '&sheet=' + sheet.getName())
     );
     spread.toast(reply.getContentText().split('\n')[0], '✅ Enrichment done!');
 }

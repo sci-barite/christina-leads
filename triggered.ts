@@ -1,10 +1,11 @@
 function triggeredEnrich() {
     const document = SpreadsheetApp.openById(getChristinaSheet());
-    const contacts = document.getSheetByName('Contacts') ?? document.getSheetByName('Contacts -> Enriching! 📡');
-    if (!contacts) throw new Error("⛔ No Contacts sheet found!");
-    contacts?.setTabColor('red');
-    contacts.setName('Contacts -> Enriching! 📡');
     const propServ = PropertiesService.getScriptProperties();
+    const theSheet = propServ.getProperty('EnrichContactsTargetSheet');
+    if (!theSheet) throw new Error('⛔ No taget sheet set! Set it with "▶️📡 Start enriching contacts..." from the ➕ menu.');
+    const contacts = document.getSheetByName(theSheet);
+    if (!contacts) throw new Error('⛔ No sheet found with recorded name! Set it with "▶️📡 Start enriching contacts..." from the ➕ menu.');
+    contacts.setTabColor('red');
     const previous = propServ.getProperty('triggeredEnrich-previous');
     const rangeObj = {top: previous ? Number(previous) : 0, end: 0};
     document.toast(JSON.stringify(rangeObj));
