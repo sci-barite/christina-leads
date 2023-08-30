@@ -6,6 +6,57 @@ function GETLINK(input: any){
   return url;
 }
 
+function fromLiToWebsite() {
+    const Window = SpreadsheetApp.getActiveSpreadsheet();
+    const Spread = Window.getActiveSheet();
+    const Header = Spread.getRange('1:1').getValues().flat();
+    const Linked = Header.indexOf("Company Linkedin URL") + 1;
+    if (!Linked) throw new Error('Column "Company Linkedin URL" not found!');
+    const ComURL = Header.indexOf("Company Website") + 1;
+    if (!ComURL) throw new Error('Column "Company Website" not found!');
+    const Source = Spread.getRange(2, Linked, Spread.getLastRow() + 1, 1);
+    const Target = Spread.getRange(2, ComURL, Spread.getLastRow() + 1, 1);
+    const AllURL = Source.getValues();
+    const Failed = [] as number[];
+    AllURL.forEach((link, n) => {
+      if (!link[0].includes('linkedin.com/company')) return;
+      const CompID = link[0].split('/').pop();
+      const Search = {fetch: UrlFetchApp.fetch('https://duckduckgo.com/?q=what+is+the+website+of+company+' + CompID, {muteHttpExceptions: true })};
+      const DuckGo = Search.fetch.getContentText();
+      const Result = DuckGo?.split('<h2 class="result__title">')?.[1];
+      const NewURL = Result?.split('href="//duckduckgo.com/l/?uddg=')?.[1]?.split('%2F&amp;rut=')?.shift()?.replace('%3A%2F%2F', '://')?.split('%')?.[0];
+      link[0] = (NewURL?.includes('linkedin') || NewURL?.includes('facebook')) ? '❓CANNOT GUESS' : NewURL;
+      if (link[0].startsWith('❓')) Failed.push(n);
+      if (n % 5 === 0) Window.toast('Guessed ' + (n + 1 - Failed.length) + ' out of ' + AllURL.length ,'❓🌍 GUESSING WEBSITES...');
+    })
+    Target.setValues(AllURL);
+  }
+
+function getCompaniesHiring() {
+    const props = PropertiesService.getScriptProperties();
+    const dbURL = props.getProperty('FWDB');
+    const prevs = props.getProperty('PreviouslyFetched');
+    const array = prevs ? JSON.parse(prevs) : [] as string[];
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+        'Contacting FWDB Leads...', 
+        '➕💼 GET COMPANIES HIRING'
+    );
+    const comps = JSON.parse(UrlFetchApp.fetch(dbURL + '?request=getCompaniesHiring' + 
+        (prevs ? '&prevs=' + array.join('__') : '')).getContentText()) as string[];
+    if (comps[0].startsWith('ERR')) {
+        SpreadsheetApp.getActiveSpreadsheet().toast(
+            comps[0], 
+            '⛔💼 GET COMPANIES HIRING'
+        );
+        return;
+    } 
+    props.setProperty('PreviouslyFetched', JSON.stringify([...comps, ...array]));
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+        'New sheet has ' + comps.length + ' companies hiring, you can find it marked in green, below.', 
+        '✅💼 GET COMPANIES HIRING'
+    );
+}
+
 function editPositions() {
     const props = PropertiesService.getScriptProperties();
     const inter = SpreadsheetApp.getUi();
@@ -57,7 +108,7 @@ function setFindContacts() {
     props.setProperty('FindContactsTargetSheet', sheet);
     const trigger = ScriptApp.newTrigger('findContacts')
         .timeBased()
-        .everyMinutes(1)
+        .everyMinutes(2)
         .create();
     props.setProperty('FindContactsTrigger', trigger.getUniqueId());
     inter.alert(
@@ -101,7 +152,7 @@ function setEnrichContacts() {
     props.setProperty('EnrichContactsTargetSheet', sheet);
     const trigger = ScriptApp.newTrigger('triggeredEnrich')
         .timeBased()
-        .everyMinutes(1)
+        .everyMinutes(2)
         .create();
     props.setProperty('EnrichContactsTrigger', trigger.getUniqueId());
     inter.alert(
@@ -138,7 +189,7 @@ function findContacts() {
     if (!sName) throw new Error('No taget sheet set! Set it with "▶️🗃️ Start finding new contacts..." from the ➕ menu.');
     const sheet = SpreadsheetApp.openById(getChristinaSheet()).getSheetByName(sName);
     if (!sheet) throw new Error('Target sheet "' + sName + '" not found! Set it correctly with "Start finding new contacts..." from the ➕ menu.');
-    const found = JSON.parse(props.getProperty('SearchedOnApollo-' + sName) ?? '[]');
+    const found = JSON.parse(props.getProperty('SearchedOnApollo-' + sName.split(' ').join('')) ?? '[]');
     const comps = sheet.getRange('C2:C' + sheet.getLastRow()).getValues().flat().map((url, row) => [row, url]);
     //const leads = sheet.getRange('L2:L' + sheet.getLastRow()).getValues().flat().map((url, row) => [row, url]);
     for (const [row, comp] of comps) {
@@ -146,14 +197,17 @@ function findContacts() {
         if (found.includes(comp)) continue;
         const companyRows = comps.filter(name => name[1] === comp);
         //const excludeList = leads.filter(people => companyRows.find(company => company[0] === people[0])).map(person => person[1]);
-        UrlFetchApp.fetch(dbURL + '?request=apolloPeopleFind&domain=' + comp
+        const reply = UrlFetchApp.fetch(dbURL + '?request=apolloPeopleFind&domain=' + comp
             + '&targetRow=' + companyRows.at(-1)?.[0]
             + '&titles=' + terms.join('__'));
         //    + '&excludeLinkedIn=' + excludeList.join('__'));
+        reply.getContentText() !== 'GOOD' ? console.error(reply.getContentText()) : console.log('GOOD');
         found.push(comp);
+        SpreadsheetApp.getActiveSpreadsheet().toast(comp + ' at found[' + found.indexOf(comp) + '] row ' + (row + 1), 
+            reply.getContentText().length < 12 ? 'FWDB Reply: ' + reply.getContentText() : '⛔ Maximum API calls reached');
         break;
     }
-    props.setProperty('SearchedOnApollo-' + sName, JSON.stringify(found));
+    props.setProperty('SearchedOnApollo-' + sName.split(' ').join(''), JSON.stringify(found));
 }
 
 function enrichContacts() {

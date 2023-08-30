@@ -7,5 +7,10 @@ function onOpen() {
         .addSeparator()
         .addItem('▶️📡  Start enriching contacts...', 'setEnrichContacts')
         .addItem('⏹️📡  Stop enriching contacts...', 'delEnrichContacts')
+        .addItem('✅📡  Enrich selected', 'enrichContacts')
+        .addSeparator()
+        .addItem('➕💼  Get companies hiring', 'getCompaniesHiring')
+        .addSeparator()
+        .addItem('❓🌍  Guess company websites', 'fromLiToWebsite')
         .addToUi();
 }
