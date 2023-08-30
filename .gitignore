@@ -1,0 +1,10 @@
+node_modules
+OAuth2.js
+all-ui.js
+main-functions.js
+triggered-functions.js
+utilities.js
+secrets.ts
+creds.json
+.clasprc.json
+.count
