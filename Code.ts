@@ -108,7 +108,7 @@ function setFindContacts() {
     props.setProperty('FindContactsTargetSheet', sheet);
     const trigger = ScriptApp.newTrigger('findContacts')
         .timeBased()
-        .everyMinutes(2)
+        .everyMinutes(1)
         .create();
     props.setProperty('FindContactsTrigger', trigger.getUniqueId());
     inter.alert(
@@ -152,7 +152,7 @@ function setEnrichContacts() {
     props.setProperty('EnrichContactsTargetSheet', sheet);
     const trigger = ScriptApp.newTrigger('triggeredEnrich')
         .timeBased()
-        .everyMinutes(2)
+        .everyMinutes(1)
         .create();
     props.setProperty('EnrichContactsTrigger', trigger.getUniqueId());
     inter.alert(
@@ -193,18 +193,25 @@ function findContacts() {
     const comps = sheet.getRange('C2:C' + sheet.getLastRow()).getValues().flat().map((url, row) => [row, url]);
     //const leads = sheet.getRange('L2:L' + sheet.getLastRow()).getValues().flat().map((url, row) => [row, url]);
     for (const [row, comp] of comps) {
-        console.log(comp, row);
         if (found.includes(comp)) continue;
+        const logging = ['From row ' + (row + 1), '🗃️ Trying "' + comp + '"'];
+        console.log(logging[1] + ' ' + logging[0]);
+        SpreadsheetApp.getActiveSpreadsheet().toast(logging[0], logging[1]);
         const companyRows = comps.filter(name => name[1] === comp);
         //const excludeList = leads.filter(people => companyRows.find(company => company[0] === people[0])).map(person => person[1]);
         const reply = UrlFetchApp.fetch(dbURL + '?request=apolloPeopleFind&domain=' + comp
             + '&targetRow=' + companyRows.at(-1)?.[0]
-            + '&titles=' + terms.join('__'));
+            + '&titles=' + terms.join('__')
+            + '&sheet=' + sName);
         //    + '&excludeLinkedIn=' + excludeList.join('__'));
         reply.getContentText() !== 'GOOD' ? console.error(reply.getContentText()) : console.log('GOOD');
         found.push(comp);
-        SpreadsheetApp.getActiveSpreadsheet().toast(comp + ' at found[' + found.indexOf(comp) + '] row ' + (row + 1), 
-            reply.getContentText().length < 12 ? 'FWDB Reply: ' + reply.getContentText() : '⛔ Maximum API calls reached');
+        const results = [
+            comp + ' at found[' + found.indexOf(comp) + '] row ' + (row + 1), 
+            reply.getContentText().length < 12 ? 'FWDB Reply: ' + reply.getContentText() : '⛔ API issue: try in 1h'
+        ];
+        SpreadsheetApp.getActiveSpreadsheet().toast(results[0], results[1]);
+        console.warn(results[1], results[0]);
         break;
     }
     props.setProperty('SearchedOnApollo-' + sName.split(' ').join(''), JSON.stringify(found));
