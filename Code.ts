@@ -233,6 +233,8 @@ function enrichContacts() {
 function callEnricher(A1range: string, spread: GoogleAppsScript.Spreadsheet.Spreadsheet, sheet: GoogleAppsScript.Spreadsheet.Sheet) {
     const A1row = A1range.split(':').map(A1 => parseInt(A1.substring(1)));
     if (A1row.some(row => isNaN(row))) throw new Error('🐞 ERROR: Parsed rows "' + A1row.toString() + '" are invalid.');
+    const sheetName = sheet.getName().split(' ').join('__');
+    console.log('callEnricher for sheet:', sheetName);
     const conts = sheet.getRange('I' + A1row[0] + ':O' + (A1row[1] || A1row[0])).getValues();
     const comps = sheet.getRange('C' + A1row[0] + ':C' + (A1row[1] || A1row[0])).getValues().flat();
     const first = comps[0];
@@ -242,19 +244,23 @@ function callEnricher(A1range: string, spread: GoogleAppsScript.Spreadsheet.Spre
         spread.toast('Can only enrich up to 10 contacts, all from a single company. Cutting the list accordingly.', '⚠️ CUTTING LIST');
     }
     const outgo = conts.slice(0, diffs > 0 ? diffs : 10).slice(0, 10);
+    if (!outgo.filter(contact => contact[5] && !contact[5].startsWith('❓')).length) {
+        console.warn('⏩ Selected range has no Apollo IDs, so it would not enrich. Skipping!');
+        return;
+    }
     A1row[1] = A1row[1] - (conts.length - outgo.length);
     const names = outgo.map(cont => '- ' + cont[0] + ' ' + cont[1]).join('\n');
     spread.toast(names, '▶️ Enriching till ' + (A1row[1] || A1row[0]));
     console.log('▶️ Enriching till ' + (A1row[1] || A1row[0]) + '\n' + names);
 
-    const reply = UrlFetchApp.fetch(PropertiesService.getScriptProperties().getProperty('FWDB') + '?request=apolloPeopleEnrich&domain=' + first
+        const reply = UrlFetchApp.fetch(PropertiesService.getScriptProperties().getProperty('FWDB') + '?request=apolloPeopleEnrich&domain=' + first
             + '&organization=' + sheet.getRange('B' + A1row[0]).getValue()
             + '&firstNames=' + outgo.map(cont => cont[0]).join('__')
             + '&lastNames=' + outgo.map(cont => cont[1]).join('__')
             + '&apolloIDs=' + outgo.map(cont => cont[5]).join('__')
             + '&topOfRange=' + A1row[0]
-            + '&endOfRange=' + (A1row[1] || A1row[0]
-            + '&sheet=' + sheet.getName())
+            + '&endOfRange=' + (A1row[1] || A1row[0])
+            + '&sheet=' + sheetName
     );
     spread.toast(reply.getContentText().split('\n')[0], '✅ Enrichment done!');
 }

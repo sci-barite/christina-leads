@@ -23,6 +23,5 @@ function triggeredEnrich() {
         console.error('Error message: ' + e);
     } finally {
         contacts.setTabColor(null);
-        contacts.setName('Contacts');
     }
 }
